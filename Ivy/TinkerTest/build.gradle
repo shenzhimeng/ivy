@@ -27,13 +27,35 @@ android {
         /**
          * client version would update with patch
          * so we can get the newly git version easily!
+         * TINKER_ID 在这里设置了
          */
         buildConfigField "String", "TINKER_ID", "\"${getTinkerIdValue()}\""
         buildConfigField "String", "PLATFORM",  "\"all\""
     }
+
+    signingConfigs {
+        release {
+            try {
+                storeFile file("release.keystore")
+                storePassword "testres"
+                keyAlias "testres"
+                keyPassword "testres"
+            } catch (ex) {
+                throw new InvalidUserDataException(ex.toString())
+            }
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+            minifyEnabled true
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -54,6 +76,7 @@ dependencies {
 }
 
 def gitSha() {
+    //将git版本号设置为TINKER_ID
     try {
         String gitRev = 'git rev-parse --short HEAD'.execute(null, project.rootDir).text.trim()
         if (gitRev == null) {
@@ -66,9 +89,11 @@ def gitSha() {
 }
 
 def getTinkerIdValue() {
+    //如果没有指定TINKER_ID，就会通过gitSha()方法获取
     return hasProperty("TINKER_ID") ? TINKER_ID : gitSha()
 }
 
+//定义安装包路径。每次build时，如assembleDebug都会在bakApk目录下生成打包好的apk文件
 def bakPath = file("${buildDir}/bakApk/")
 
 /**
@@ -77,16 +102,21 @@ def bakPath = file("${buildDir}/bakApk/")
  * add apk from the build/bakApk
  */
 ext {
+    //这里是控制tinker开关的，平时debug的时候可以选择关闭
     //for some reason, you may want to ignore tinkerBuild, such as instant run debug build?
     tinkerEnabled = true
 
+    //这里是old.apk的路径，在第二次打包时必须手动修改为第一次打包保留下的apk存放路径
+    //下面示例中的时分秒非必要不要动了，我就是把分秒删了，在同一时段内造成相同报名覆盖而看不到效果，这是一个悲剧
     //for normal build
     //old apk file to build patch apk
-    tinkerOldApkPath = "${bakPath}/TinkerTest-debug-0207-18-23-16.apk"
+    tinkerOldApkPath = "${bakPath}/TinkerTest-debug-0208-17-02-10.apk"
+    //mapping.txt同上，需换成第一次打包是保留的存放路径
     //proguard mapping file to build patch apk
-    tinkerApplyMappingPath = "${bakPath}/app-debug-1018-17-mapping.txt"
+    tinkerApplyMappingPath = "${bakPath}/TinkerTest-debug-0208-17-02-10-mapping.txt"
+    //同上，这个也必需改，不然会报错
     //resource R.txt to build patch apk, must input if there is resource changed
-    tinkerApplyResourcePath = "${bakPath}/TinkerTest-debug-0207-18-23-16-R.txt"
+    tinkerApplyResourcePath = "${bakPath}/TinkerTest-debug-0208-17-02-10-R.txt"
 
     //only use for build all flavor, if not, just ignore this field
     tinkerBuildFlavorDirectory = "${bakPath}/app-1018-17"
@@ -115,7 +145,7 @@ def getTinkerBuildFlavorDirectory() {
 if (buildWithTinker()) {
     apply plugin: 'com.tencent.tinker.patch'
 
-    tinkerPatch {
+    tinkerPatch {//跟命令行介入时的tinker_config.xml中的配置差不多，可根据自己情况做相应修改
         /**
          * necessary，default 'null'
          * the old apk path, use to diff with the new apk to build
@@ -298,6 +328,7 @@ if (buildWithTinker()) {
         }
     }
 
+    //这里是多渠道打包和将打好的包copy的bakApk目录的代码
     List<String> flavors = new ArrayList<>();
     project.android.productFlavors.each {flavor ->
         flavors.add(flavor.name)
@@ -344,6 +375,8 @@ if (buildWithTinker()) {
             }
         }
     }
+
+    //多渠道的时候用到
     project.afterEvaluate {
         //sample use for build all flavor for one time
         if (hasFlavors) {
