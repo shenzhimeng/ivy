@@ -1,1 +1,1 @@
-include ':app', ':TinkerTest'
+include ':app', ':TinkerTest', ':javademo'
