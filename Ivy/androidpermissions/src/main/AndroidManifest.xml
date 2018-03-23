@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.ivy.androidpermissions">
+
+    <!--Normal Permissions-->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--Dangerous Permissions-->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+    <!--
+        Dangerous Permissions
+        可以通过adb shell pm list permissions -d -g进行查看
+        如果你申请某个危险的权限，假设你的app早已被用户授权了同一组的某个危险权限，
+        那么系统会立即授权，而不需要用户去点击授权。比如你的app对READ_CONTACTS已经授权了，
+        当你的app申请WRITE_CONTACTS时，系统会直接授权通过。
+        此外，对于申请时弹出的dialog上面的文本说明也是对整个权限组的说明，
+        而不是单个权限（ps:这个dialog是不能进行定制的）。
+
+        不过需要注意的是，不要对权限组过多的依赖，尽可能对每个危险权限都进行正常流程的申请，
+        因为在后期的版本中这个权限组可能会产生变化。
+
+        group:com.google.android.gms.permission.CAR_INFORMATION
+          permission:com.google.android.gms.permission.CAR_VENDOR_EXTENSION
+          permission:com.google.android.gms.permission.CAR_MILEAGE
+          permission:com.google.android.gms.permission.CAR_FUEL
+
+        group:android.permission-group.CONTACTS
+          permission:android.permission.WRITE_CONTACTS
+          permission:android.permission.GET_ACCOUNTS
+          permission:android.permission.READ_CONTACTS
+
+        group:android.permission-group.PHONE
+          permission:android.permission.READ_CALL_LOG
+          permission:android.permission.READ_PHONE_STATE
+          permission:android.permission.CALL_PHONE
+          permission:android.permission.WRITE_CALL_LOG
+          permission:android.permission.USE_SIP
+          permission:android.permission.PROCESS_OUTGOING_CALLS
+          permission:com.android.voicemail.permission.ADD_VOICEMAIL
+
+        group:android.permission-group.CALENDAR
+          permission:android.permission.READ_CALENDAR
+          permission:android.permission.WRITE_CALENDAR
+
+        group:android.permission-group.CAMERA
+          permission:android.permission.CAMERA
+
+        group:android.permission-group.SENSORS
+          permission:android.permission.BODY_SENSORS
+
+        group:android.permission-group.LOCATION
+          permission:android.permission.ACCESS_FINE_LOCATION
+          permission:com.google.android.gms.permission.CAR_SPEED
+          permission:android.permission.ACCESS_COARSE_LOCATION
+
+        group:android.permission-group.STORAGE
+          permission:android.permission.READ_EXTERNAL_STORAGE
+          permission:android.permission.WRITE_EXTERNAL_STORAGE
+
+        group:android.permission-group.MICROPHONE
+          permission:android.permission.RECORD_AUDIO
+
+        group:android.permission-group.SMS
+          permission:android.permission.READ_SMS
+          permission:android.permission.RECEIVE_WAP_PUSH
+          permission:android.permission.RECEIVE_MMS
+          permission:android.permission.RECEIVE_SMS
+          permission:android.permission.SEND_SMS
+          permission:android.permission.READ_CELL_BROADCASTS
+        -->
+
+</manifest>

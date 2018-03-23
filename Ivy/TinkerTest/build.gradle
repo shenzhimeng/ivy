@@ -1,82 +1,18 @@
 apply plugin: 'com.android.application'
 
-android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.0"
-
-    //recommend
-    dexOptions {
-        jumboMode = true
-    }
-
-    defaultConfig {
-        applicationId "io.github.ivy.tinkertest"
-        minSdkVersion 14
-        targetSdkVersion 25
-        versionCode 1
-        versionName "1.0"
-
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-
-        /**
-         * buildConfig can change during patch!
-         * we can use the newly value when patch
-         */
-        buildConfigField "String", "MESSAGE", "\"I am the base apk\""
-//        buildConfigField "String", "MESSAGE", "\"I am the patch apk\""
-        /**
-         * client version would update with patch
-         * so we can get the newly git version easily!
-         * TINKER_ID 在这里设置了
-         */
-        buildConfigField "String", "TINKER_ID", "\"${getTinkerIdValue()}\""
-        buildConfigField "String", "PLATFORM",  "\"all\""
-    }
-
-    signingConfigs {
-        release {
-            try {
-                storeFile file("release.keystore")
-                storePassword "testres"
-                keyAlias "testres"
-                keyPassword "testres"
-            } catch (ex) {
-                throw new InvalidUserDataException(ex.toString())
-            }
-        }
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled true
-            signingConfig signingConfigs.release
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-        debug {
-            debuggable true
-            minifyEnabled true
-            signingConfig signingConfigs.release
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-}
-
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
-    compile 'com.android.support:appcompat-v7:25.0.0'
-    testCompile 'junit:junit:4.12'
-
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    testImplementation 'junit:junit:4.12'
+    implementation "com.android.support:appcompat-v7:26.1.0"
     //optional, help to generate the final application
-    provided('com.tencent.tinker:tinker-android-anno:1.7.7')
+    implementation('com.tencent.tinker:tinker-android-anno:1.9.1')
     //tinker's main Android lib
-    compile('com.tencent.tinker:tinker-android-lib:1.7.7')
+    implementation('com.tencent.tinker:tinker-android-lib:1.9.1')
+    implementation "com.android.support:multidex:1.0.1"
+
 }
 
 def gitSha() {
-    //将git版本号设置为TINKER_ID
     try {
         String gitRev = 'git rev-parse --short HEAD'.execute(null, project.rootDir).text.trim()
         if (gitRev == null) {
@@ -88,12 +24,96 @@ def gitSha() {
     }
 }
 
-def getTinkerIdValue() {
-    //如果没有指定TINKER_ID，就会通过gitSha()方法获取
-    return hasProperty("TINKER_ID") ? TINKER_ID : gitSha()
+def javaVersion = JavaVersion.VERSION_1_7
+
+android {
+    compileSdkVersion 26
+    buildToolsVersion '26.0.2'
+
+    compileOptions {
+        sourceCompatibility javaVersion
+        targetCompatibility javaVersion
+    }
+    //recommend
+    dexOptions {
+        jumboMode = true
+    }
+
+    signingConfigs {
+        release {
+            try {
+                storeFile file("./keystore/release.keystore")
+                storePassword "testres"
+                keyAlias "testres"
+                keyPassword "testres"
+            } catch (ex) {
+                throw new InvalidUserDataException(ex.toString())
+            }
+        }
+
+        debug {
+            storeFile file("./keystore/debug.keystore")
+        }
+    }
+
+    defaultConfig {
+        applicationId "io.github.ivy.tinkertest"
+        minSdkVersion 14
+        targetSdkVersion 22
+        versionCode 1
+        versionName "1.0.0"
+        /**
+         * you can use multiDex and install it in your ApplicationLifeCycle implement
+         */
+        multiDexEnabled true
+        /**
+         * buildConfig can change during patch!
+         * we can use the newly value when patch
+         */
+        buildConfigField "String", "MESSAGE", "\"I am the base apk\""
+//        buildConfigField "String", "MESSAGE", "\"I am the patch apk\""
+        /**
+         * client version would update with patch
+         * so we can get the newly git version easily!
+         */
+        buildConfigField "String", "TINKER_ID", "\"${getTinkerIdValue()}\""
+        buildConfigField "String", "PLATFORM", "\"all\""
+    }
+
+//    aaptOptions{
+//        cruncherEnabled false
+//    }
+
+//    //use to test flavors support
+//    productFlavors {
+//        flavor1 {
+//            applicationId 'tinker.sample.android.flavor1'
+//        }
+//
+//        flavor2 {
+//            applicationId 'tinker.sample.android.flavor2'
+//        }
+//    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), project.file('proguard-rules.pro')
+        }
+        debug {
+            debuggable true
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
 }
 
-//定义安装包路径。每次build时，如assembleDebug都会在bakApk目录下生成打包好的apk文件
 def bakPath = file("${buildDir}/bakApk/")
 
 /**
@@ -102,25 +122,21 @@ def bakPath = file("${buildDir}/bakApk/")
  * add apk from the build/bakApk
  */
 ext {
-    //这里是控制tinker开关的，平时debug的时候可以选择关闭
     //for some reason, you may want to ignore tinkerBuild, such as instant run debug build?
     tinkerEnabled = true
 
-    //这里是old.apk的路径，在第二次打包时必须手动修改为第一次打包保留下的apk存放路径
-    //下面示例中的时分秒非必要不要动了，我就是把分秒删了，在同一时段内造成相同报名覆盖而看不到效果，这是一个悲剧
     //for normal build
     //old apk file to build patch apk
-    tinkerOldApkPath = "${bakPath}/TinkerTest-debug-0208-17-02-10.apk"
-    //mapping.txt同上，需换成第一次打包是保留的存放路径
+    tinkerOldApkPath = "${bakPath}/app-debug-1018-17-32-47.apk"
     //proguard mapping file to build patch apk
-    tinkerApplyMappingPath = "${bakPath}/TinkerTest-debug-0208-17-02-10-mapping.txt"
-    //同上，这个也必需改，不然会报错
+    tinkerApplyMappingPath = "${bakPath}/app-debug-1018-17-32-47-mapping.txt"
     //resource R.txt to build patch apk, must input if there is resource changed
-    tinkerApplyResourcePath = "${bakPath}/TinkerTest-debug-0208-17-02-10-R.txt"
+    tinkerApplyResourcePath = "${bakPath}/app-debug-1018-17-32-47-R.txt"
 
     //only use for build all flavor, if not, just ignore this field
-    tinkerBuildFlavorDirectory = "${bakPath}/app-1018-17"
+    tinkerBuildFlavorDirectory = "${bakPath}/app-1018-17-32-47"
 }
+
 
 def getOldApkPath() {
     return hasProperty("OLD_APK") ? OLD_APK : ext.tinkerOldApkPath
@@ -134,6 +150,10 @@ def getApplyResourceMappingPath() {
     return hasProperty("APPLY_RESOURCE") ? APPLY_RESOURCE : ext.tinkerApplyResourcePath
 }
 
+def getTinkerIdValue() {
+    return hasProperty("TINKER_ID") ? TINKER_ID : gitSha()
+}
+
 def buildWithTinker() {
     return hasProperty("TINKER_ENABLE") ? TINKER_ENABLE : ext.tinkerEnabled
 }
@@ -145,7 +165,7 @@ def getTinkerBuildFlavorDirectory() {
 if (buildWithTinker()) {
     apply plugin: 'com.tencent.tinker.patch'
 
-    tinkerPatch {//跟命令行介入时的tinker_config.xml中的配置差不多，可根据自己情况做相应修改
+    tinkerPatch {
         /**
          * necessary，default 'null'
          * the old apk path, use to diff with the new apk to build
@@ -215,6 +235,26 @@ if (buildWithTinker()) {
              * open this can reduce the dex diff file size.
              */
             keepDexApply = false
+
+            /**
+             * optional, default 'false'
+             * Whether tinker should treat the base apk as the one being protected by app
+             * protection tools.
+             * If this attribute is true, the generated patch package will contain a
+             * dex including all changed classes instead of any dexdiff patch-info files.
+             */
+            isProtectedApp = false
+
+            /**
+             * optional, default 'false'
+             * Whether tinker should support component hotplug (add new component dynamically).
+             * If this attribute is true, the component added in new apk will be available after
+             * patch is successfully loaded. Otherwise an error would be announced when generating patch
+             * on compile-time.
+             *
+             * <b>Notice that currently this feature is incubating and only support NON-EXPORTED Activity</b>
+             */
+            supportHotplugComponent = false
         }
 
         dex {
@@ -328,12 +368,13 @@ if (buildWithTinker()) {
         }
     }
 
-    //这里是多渠道打包和将打好的包copy的bakApk目录的代码
     List<String> flavors = new ArrayList<>();
-    project.android.productFlavors.each {flavor ->
+    project.android.productFlavors.each { flavor ->
         flavors.add(flavor.name)
     }
     boolean hasFlavors = flavors.size() > 0
+    def date = new Date().format("MMdd-HH-mm-ss")
+
     /**
      * bak apk and mapping
      */
@@ -342,7 +383,6 @@ if (buildWithTinker()) {
          * task type, you want to bak
          */
         def taskName = variant.name
-        def date = new Date().format("MMdd-HH-mm-ss")
 
         tasks.all {
             if ("assemble${taskName.capitalize()}".equalsIgnoreCase(it.name)) {
@@ -353,7 +393,7 @@ if (buildWithTinker()) {
                         def newFileNamePrefix = hasFlavors ? "${fileNamePrefix}" : "${fileNamePrefix}-${date}"
 
                         def destPath = hasFlavors ? file("${bakPath}/${project.name}-${date}/${variant.flavorName}") : bakPath
-                        from variant.outputs.outputFile
+                        from variant.outputs.first().outputFile
                         into destPath
                         rename { String fileName ->
                             fileName.replace("${fileNamePrefix}.apk", "${newFileNamePrefix}.apk")
@@ -375,8 +415,6 @@ if (buildWithTinker()) {
             }
         }
     }
-
-    //多渠道的时候用到
     project.afterEvaluate {
         //sample use for build all flavor for one time
         if (hasFlavors) {

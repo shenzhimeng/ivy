@@ -1,1 +1,1 @@
-include ':app', ':TinkerTest', ':javademo'
+include ':app', ':TinkerTest', ':javademo', ':androidpermissions'
